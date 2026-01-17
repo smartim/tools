@@ -1,4 +1,4 @@
-module github.com/openimsdk/tools
+require github.com/smartim/tools v0.1.1
 
 go 1.22.0
 
