@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openimsdk/tools/queue/task"
 	"github.com/redis/go-redis/v9"
+	"github.com/smartim/tools/queue/task"
 )
 
 type QueueManager[T any, K comparable] struct {
@@ -462,6 +462,40 @@ func (m *QueueManager[T, K]) backfillProcessingQueue(ctx context.Context, key K)
 	}
 
 	return nil
+}
+
+func (m *QueueManager[T, K]) AutoTransformProcessingData(ctx context.Context, fromKey K, data T) (K, error) {
+	// Remove from source processing queue
+	removed, err := m.removeFromQueue(ctx, m.getProcessingQueueKey(fromKey), data)
+	if err != nil {
+		return *new(K), err
+	}
+	if !removed {
+		return *new(K), task.ErrDataNotFound
+	}
+
+	// Select target key using strategy
+	toKey, hasKey := m.assignStrategy(ctx, m)
+	if !hasKey {
+		// No key available, push back to source processing queue to avoid data loss
+		m.forcePushToProcessingQueue(ctx, fromKey, data)
+		return *new(K), task.ErrNoKeyAvailable
+	}
+
+	// Force push to target processing queue (bypass capacity limit)
+	if err := m.forcePushToProcessingQueue(ctx, toKey, data); err != nil {
+		// If force push fails, try to push back to source to avoid data loss
+		m.forcePushToProcessingQueue(ctx, fromKey, data)
+		return *new(K), err
+	}
+
+	// Backfill source processing queue
+	if err := m.backfillProcessingQueue(ctx, fromKey); err != nil {
+		// Log error but don't fail the operation
+		// The transform was successful, backfill is best-effort
+	}
+
+	return toKey, nil
 }
 
 func (m *QueueManager[T, K]) Close() error {

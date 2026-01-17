@@ -21,4 +21,5 @@ var (
 	ErrWaitingQueueFull    = errors.New("waiting queue is full")
 	ErrProcessingQueueFull = errors.New("processing queue is full")
 	ErrDataNotFound        = errors.New("data not found")
+	ErrNoKeyAvailable      = errors.New("no key available")
 )

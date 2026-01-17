@@ -17,8 +17,8 @@ package mongoutil
 import (
 	"context"
 
-	"github.com/openimsdk/tools/db/pagination"
-	"github.com/openimsdk/tools/errs"
+	"github.com/smartim/tools/db/pagination"
+	"github.com/smartim/tools/errs"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

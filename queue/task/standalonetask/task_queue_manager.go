@@ -1,11 +1,25 @@
+// Copyright © 2026 OpenIM open source community. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package standalonetask
 
 import (
 	"context"
 	"sync"
 
-	"github.com/openimsdk/tools/queue/bound"
-	"github.com/openimsdk/tools/queue/task"
+	"github.com/smartim/tools/queue/bound"
+	"github.com/smartim/tools/queue/task"
 )
 
 // Queue will pop data from its waiting Queue. If it`s empty, it will pop data from global Queue(in QueueManager),
@@ -93,28 +107,30 @@ func (tm *QueueManager[T, K]) AddKey(ctx context.Context, key K) error {
 	return nil
 }
 
-func (tm *QueueManager[T, K]) Insert(ctx context.Context, data T) error {
+func (tm *QueueManager[T, K]) Insert(ctx context.Context, data T) (K, error) {
 	tm.lock.Lock()
-	k, assigned := tm.assignKey()
 	defer tm.lock.Unlock()
+
+	k, assigned := tm.assignKey()
+	var zero K
 
 	if !assigned {
 		if !tm.globalQueue.Full() {
-			return tm.globalQueue.Push(data)
+			return zero, tm.globalQueue.Push(data)
 		}
-		return task.ErrGlobalQueueFull
+		return zero, task.ErrGlobalQueueFull
 	}
 
 	taskQueues := tm.taskQueues[k]
 	if !taskQueues.processing.Full() {
-		return taskQueues.processing.Push(data)
+		return k, taskQueues.processing.Push(data)
 	}
 
 	if !tm.globalQueue.Full() {
-		return tm.globalQueue.Push(data)
+		return zero, tm.globalQueue.Push(data)
 	}
 
-	return task.ErrGlobalQueueFull
+	return zero, task.ErrGlobalQueueFull
 }
 
 func (tm *QueueManager[T, K]) InsertByKey(ctx context.Context, key K, data T) error {
@@ -226,6 +242,31 @@ func (tm *QueueManager[T, K]) TransformProcessingData(ctx context.Context, fromK
 
 	toQ.processing.ForcePush(data)
 	return nil
+}
+
+func (tm *QueueManager[T, K]) AutoTransformProcessingData(ctx context.Context, fromKey K, data T) (K, error) {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+	fromQ, exists := tm.taskQueues[fromKey]
+	if !exists {
+		return *new(K), task.ErrDataNotFound
+	}
+
+	ok := fromQ.processing.Remove(data, tm.equalDataFunc)
+	if !ok {
+		return *new(K), task.ErrDataNotFound
+	}
+
+	toKey, hasKey := tm.assignKey()
+	if !hasKey {
+		// Push back to avoid data loss
+		fromQ.processing.ForcePush(data)
+		return *new(K), task.ErrNoKeyAvailable
+	}
+
+	toQ := tm.getOrCreateTaskQueues(toKey)
+	toQ.processing.ForcePush(data)
+	return toKey, nil
 }
 
 // GetGlobalQueuePosition returns the position of data in the global queue (0-based, -1 if not found)

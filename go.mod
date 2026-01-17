@@ -1,6 +1,6 @@
 module github.com/smartim/tools
 
-go 1.22.0
+go 1.22.7
 
 require (
 	github.com/IBM/sarama v1.43.0
@@ -30,7 +30,6 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/magefile/mage v1.15.0
 	github.com/minio/minio-go/v7 v7.0.69
-	github.com/smartim/protocol v0.1.1
 	github.com/qiniu/go-sdk/v7 v7.18.2
 	github.com/redis/go-redis/v9 v9.2.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
@@ -74,6 +73,7 @@ require (
 	github.com/lestrrat-go/strftime v1.0.6
 	github.com/sercand/kuberesolver/v6 v6.0.1
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/smartim/protocol v0.1.2
 	go.etcd.io/etcd/api/v3 v3.5.13
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
