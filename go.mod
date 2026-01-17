@@ -1,4 +1,4 @@
-require github.com/smartim/tools v0.1.1
+module github.com/smartim/tools
 
 go 1.22.0
 
